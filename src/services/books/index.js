@@ -185,4 +185,29 @@ booksRouter.post("/:asin/comments", async (req, res, next) => {
   }
 });
 
+booksRouter.delete("/:asin/comments/:commentID", async (req, res, next) => {
+  try {
+    const books = await getBooks(); // Fetches book Array
+
+    const bookIndex = books.findIndex((book) => book.asin === req.params.asin);
+
+    if (bookIndex !== -1) {
+      let commentsUpdated = books[bookIndex].comments.filter(
+        (comment) => comment.CommentID !== req.params.commentID
+      );
+      books[bookIndex].comments = commentsUpdated;
+
+      await writeBooks(books);
+      res.send(books);
+    } else {
+      const error = new Error();
+      error.httpStatusCode = 404;
+      next(error);
+    }
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+});
+
 module.exports = booksRouter;
