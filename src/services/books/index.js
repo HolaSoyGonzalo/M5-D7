@@ -1,5 +1,5 @@
 const express = require("express");
-
+const uniqid = require("uniqid");
 const { getBooks, writeBooks } = require("../../fsUtilities");
 
 const booksRouter = express.Router();
@@ -125,6 +125,27 @@ booksRouter.delete("/:asin", async (req, res, next) => {
     next(error);
   }
 });
+booksRouter.get("/:asin/comments", async (req, res, next) => {
+  try {
+    const books = await getBooks(); //Fetching Book's Array
+
+    const bookFound = books.find((book) => book.asin === req.params.asin);
+    if (bookFound) {
+      if (bookFound.hasOwnProperty("comments")) {
+        res.status(200).send(bookFound.comments);
+      } else {
+        res.status(404).send("No comments for this book");
+      }
+    } else {
+      const error = new Error();
+      error.httpStatusCode = 404;
+      next(error);
+    }
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
+});
 
 booksRouter.post("/:asin/comments", async (req, res, next) => {
   try {
@@ -134,13 +155,25 @@ booksRouter.post("/:asin/comments", async (req, res, next) => {
 
     if (bookIndex !== -1) {
       // book found
-      const updatedBooks = [
-        ...books.slice(0, bookIndex),
-        { ...books[bookIndex], ...validatedData },
-        ...books.slice(bookIndex + 1),
-      ];
-      await writeBooks(updatedBooks);
-      res.send(updatedBooks);
+
+      if (books[bookIndex].hasOwnProperty("comments")) {
+        //Has comments
+        books[bookIndex].comments.push({
+          ...req.body,
+          CommentID: uniqid(),
+          createdAt: new Date(),
+        });
+      } else {
+        //Has no comments
+        books[bookIndex].comments = [];
+        books[bookIndex].comments.push({
+          ...req.body,
+          CommentID: uniqid(),
+          createdAt: new Date(),
+        });
+      }
+      await writeBooks(books);
+      res.send(books);
     } else {
       const err = new Error();
       err.httpStatusCode = 404;
